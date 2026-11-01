@@ -1,0 +1,133 @@
+# ======================================================================
+# Sayak Grocery App - Master .gitignore
+# Covers: Flutter (Android, iOS, Web, Windows), Spring Boot (Maven), IDEs & Secrets
+# ======================================================================
+
+# ----------------------------------------------------------------------
+# Operating System & Temporary Files
+# ----------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+[Dd]esktop.ini
+*.swp
+*.bak
+*.tmp
+*.temp
+*.log
+**/*.log
+
+# ----------------------------------------------------------------------
+# IDE & Editor Files (IntelliJ, VS Code, Eclipse, etc.)
+# ----------------------------------------------------------------------
+.idea/
+**/.idea/
+*.iml
+**/*.iml
+*.ipr
+*.iws
+.vscode/
+**/.vscode/
+*.sublime-project
+*.sublime-workspace
+.atom/
+.history
+.settings/
+.project
+.classpath
+.nbproject/
+
+# ----------------------------------------------------------------------
+# Flutter & Dart Build Artifacts
+# ----------------------------------------------------------------------
+.dart_tool/
+**/.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+**/build/
+/build/
+doc/api/
+**/doc/api/
+coverage/
+**/coverage/
+.last_build_id
+**/.last_build_id
+app.*.symbols
+app.*.map.json
+flutter_*.png
+
+# ----------------------------------------------------------------------
+# Android Build Files & Local Machine Configs
+# ----------------------------------------------------------------------
+**/android/.gradle/
+**/android/.kotlin/
+**/android/local.properties
+**/android/app/build/
+**/android/captures/
+**/android/.cxx/
+**/android/GeneratedPluginRegistrant.java
+**/android/app/debug/
+**/android/app/profile/
+**/android/app/release/
+
+# Android Keystores & Signing Secrets (CRITICAL: NEVER COMMIT)
+*.keystore
+**/*.keystore
+*.jks
+**/*.jks
+key.properties
+**/key.properties
+
+# ----------------------------------------------------------------------
+# iOS & macOS Build Artifacts
+# ----------------------------------------------------------------------
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/ephemeral/
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/DerivedData/
+**/ios/Runner/GeneratedPluginRegistrant.*
+**/ios/profile
+**/ios/release
+**/ios/xcuserdata
+**/macos/Flutter/ephemeral/
+**/macos/Pods/
+
+# ----------------------------------------------------------------------
+# Windows & Linux Desktop Build Artifacts
+# ----------------------------------------------------------------------
+**/windows/flutter/ephemeral/
+**/linux/flutter/ephemeral/
+
+# ----------------------------------------------------------------------
+# Backend - Maven & Spring Boot (Java)
+# ----------------------------------------------------------------------
+target/
+**/target/
+*.class
+**/*.class
+*.jar
+*.war
+*.ear
+hs_err_pid*
+replay_pid*
+.mvn/wrapper/maven-wrapper.jar
+
+# ----------------------------------------------------------------------
+# Environment Variables & Secrets (CRITICAL: NEVER COMMIT)
+# ----------------------------------------------------------------------
+.env
+.env.*
+!.env.example

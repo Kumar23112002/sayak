@@ -39,10 +39,17 @@ public class OtpService {
     }
 
     /**
-     * Generates a real-time OTP, saves it in Supabase DB, and triggers SMS delivery.
+     * Generates a real-time OTP, invalidates any older active OTPs, saves in Supabase DB, and triggers SMS delivery.
      */
     @Transactional
     public String generateAndSendOtp(String phoneNumber, String purpose) {
+        // Invalidate any previous unverified OTPs for this phone and purpose to prevent conflicts
+        try {
+            otpRepository.invalidatePreviousOtps(phoneNumber, purpose);
+        } catch (Exception e) {
+            log.warn("Could not invalidate previous OTPs for {}: {}", phoneNumber, e.getMessage());
+        }
+
         // Generate cryptographic numeric OTP (e.g. 6 digits)
         String otp = generateNumericOtp(otpLength);
 
@@ -63,11 +70,12 @@ public class OtpService {
     }
 
     /**
-     * Verifies the submitted OTP against the latest active record in the database.
+     * Verifies the submitted OTP against the latest active record in the database using OrderByIdDesc.
      */
     @Transactional
     public boolean verifyOtp(String phoneNumber, String otp, String purpose) {
-        Optional<OtpVerification> optOtp = otpRepository.findTopByPhoneNumberAndPurposeAndIsVerifiedFalseOrderByCreatedAtDesc(phoneNumber, purpose);
+        // Always query by id DESC so strictly the newest auto-incremented record is fetched (immune to timezone/clock skew)
+        Optional<OtpVerification> optOtp = otpRepository.findTopByPhoneNumberAndPurposeAndIsVerifiedFalseOrderByIdDesc(phoneNumber, purpose);
 
         if (optOtp.isEmpty()) {
             log.warn("No active OTP found for phone {} with purpose {}", phoneNumber, purpose);
@@ -76,8 +84,8 @@ public class OtpService {
 
         OtpVerification verification = optOtp.get();
 
-        // Check if expired
-        if (verification.isExpired()) {
+        // Check if expired (with 60-second grace window to absorb container/database clock drift)
+        if (verification.getExpiresAt() != null && LocalDateTime.now().minusSeconds(60).isAfter(verification.getExpiresAt())) {
             log.warn("OTP for phone {} expired at {}", phoneNumber, verification.getExpiresAt());
             return false;
         }

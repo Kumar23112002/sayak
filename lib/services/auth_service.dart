@@ -3,15 +3,29 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class BackendAuthService {
-  // మీ కంప్యూటర్ యొక్క ప్రస్తుత Wi-Fi IP అడ్రస్:
-  // మీరు ఫోన్‌లో టెస్ట్ చేస్తున్నప్పుడు ఈ IP ద్వారానే ఫోన్ నుండి కంప్యూటర్‌కు కనెక్ట్ అవుతుంది.
-  static const String serverIp = '192.168.0.118';
+  // ----------------------------------------------------------------------
+  // 1. Live Production Backend URL on Render:
+  // ----------------------------------------------------------------------
+  static const String liveServerUrl = 'https://sayak-backend.onrender.com';
+
+  // ----------------------------------------------------------------------
+  // 2. Local Machine Wi-Fi IP (Used only when testing locally):
+  // ----------------------------------------------------------------------
+  static const String localServerIp = '192.168.0.118';
+
+  // ----------------------------------------------------------------------
+  // Switch: true = Use live Render cloud backend | false = Use local server
+  // ----------------------------------------------------------------------
+  static const bool useLiveServer = true;
 
   static String get baseUrl {
+    if (useLiveServer) {
+      return '$liveServerUrl/api/auth';
+    }
     if (kIsWeb) {
       return 'http://localhost:8080/api/auth';
     }
-    return 'http://$serverIp:8080/api/auth';
+    return 'http://$localServerIp:8080/api/auth';
   }
 
   static String? _authToken;
@@ -21,29 +35,37 @@ class BackendAuthService {
   static Map<String, dynamic>? get currentUser => _currentUser;
   static bool get isLoggedIn => _authToken != null;
 
+  /// Sanitizes phone number to always be a 10-digit Indian mobile number
+  static String sanitizePhone(String phone) {
+    String clean = phone.replaceAll(RegExp(r'\D'), '').trim();
+    if (clean.startsWith('91') && clean.length == 12) {
+      clean = clean.substring(2);
+    }
+    return clean;
+  }
+
   /// 1. Send Real-time OTP to Mobile Number
   static Future<Map<String, dynamic>> sendOtp(String phone) async {
-    final cleanPhone = phone.replaceAll(RegExp(r'\D'), '').trim();
+    final cleanPhone = sanitizePhone(phone);
 
     try {
+      debugPrint('[Backend Service] Sending OTP to $baseUrl/send-otp for phone: $cleanPhone');
       final response = await http
           .post(
             Uri.parse('$baseUrl/send-otp'),
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode({'phone': cleanPhone, 'purpose': 'LOGIN'}),
           )
-          .timeout(const Duration(seconds: 4));
+          .timeout(const Duration(seconds: 20));
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final bool isSuccess = data['success'] == true;
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
         return {
-          'success': isSuccess,
-          'message': data['message'] ?? (isSuccess ? 'Real-time OTP sent successfully' : 'No account found'),
+          'success': true,
+          'message': data['message'] ?? 'Real-time OTP sent successfully',
           'devOtp': data['data']?['devOtp'],
         };
       } else {
-        final data = jsonDecode(response.body);
         return {
           'success': false,
           'message': data['message'] ?? 'Failed to send OTP from backend',
@@ -53,23 +75,27 @@ class BackendAuthService {
       debugPrint('[Backend Service] Connection to $baseUrl failed: $e');
       return {
         'success': false,
-        'message': 'Cannot connect to backend. Please ensure Spring Boot is running on port 8080.',
+        'message': useLiveServer
+            ? 'Connecting to Render server... If the server is waking up, please wait 10 seconds and try again.'
+            : 'Cannot connect to backend. Please ensure Spring Boot is running on port 8080.',
       };
     }
   }
 
   /// 2. Verify OTP & Log In
   static Future<Map<String, dynamic>> verifyOtp(String phone, String otp) async {
-    final cleanPhone = phone.replaceAll(RegExp(r'\D'), '').trim();
+    final cleanPhone = sanitizePhone(phone);
+    final cleanOtp = otp.trim();
 
     try {
+      debugPrint('[Backend Service] Verifying OTP at $baseUrl/verify-otp for phone: $cleanPhone with code: $cleanOtp');
       final response = await http
           .post(
             Uri.parse('$baseUrl/verify-otp'),
             headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'phone': cleanPhone, 'otp': otp.trim(), 'purpose': 'LOGIN'}),
+            body: jsonEncode({'phone': cleanPhone, 'otp': cleanOtp, 'purpose': 'LOGIN'}),
           )
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 20));
 
       final data = jsonDecode(response.body);
       if (response.statusCode == 200 && data['success'] == true) {
@@ -84,14 +110,14 @@ class BackendAuthService {
       } else {
         return {
           'success': false,
-          'message': data['message'] ?? 'Invalid or expired OTP',
+          'message': data['message'] ?? 'Invalid or expired OTP code',
         };
       }
     } catch (e) {
       debugPrint('[Backend Service] Verification request failed: $e');
       return {
         'success': false,
-        'message': 'Cannot connect to backend server. Please try again.',
+        'message': 'Cannot connect to server. Please try again.',
       };
     }
   }
@@ -102,9 +128,10 @@ class BackendAuthService {
     required String phone,
     String? email,
   }) async {
-    final cleanPhone = phone.replaceAll(RegExp(r'\D'), '').trim();
+    final cleanPhone = sanitizePhone(phone);
 
     try {
+      debugPrint('[Backend Service] Registering user at $baseUrl/register for phone: $cleanPhone');
       final response = await http
           .post(
             Uri.parse('$baseUrl/register'),
@@ -115,7 +142,7 @@ class BackendAuthService {
               'email': email?.trim(),
             }),
           )
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 20));
 
       final data = jsonDecode(response.body);
       if (response.statusCode == 200 && data['success'] == true) {
@@ -136,7 +163,7 @@ class BackendAuthService {
       debugPrint('[Backend Service] Register request failed: $e');
       return {
         'success': false,
-        'message': 'Cannot connect to backend server. Please try again.',
+        'message': 'Cannot connect to server. Please try again.',
       };
     }
   }
@@ -148,7 +175,7 @@ class BackendAuthService {
         await http.post(
           Uri.parse('$baseUrl/logout'),
           headers: {'Authorization': 'Bearer $_authToken'},
-        ).timeout(const Duration(seconds: 2));
+        ).timeout(const Duration(seconds: 4));
       }
     } catch (_) {}
     _authToken = null;
